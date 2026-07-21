@@ -1,0 +1,9 @@
+# Globus Flow deployment, execution, and Compute function registration
+globus-cli
+globus-compute-sdk
+
+# Imaging metadata extraction and synthetic OME-TIFF generation
+czifile
+nd2
+numpy
+tifffile

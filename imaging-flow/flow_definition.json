@@ -1,0 +1,404 @@
+{
+  "Comment": "Transfer imaging data to Bell, extract metadata, package, deliver to Data Depot, share, and archive to tape.",
+  "StartAt": "StatSource",
+  "States": {
+    "StatSource": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/stat",
+      "Parameters": {
+        "endpoint_id.$": "$.source.id",
+        "path.$": "$.source.path"
+      },
+      "ResultPath": "$.results.source_stat",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.source_stat",
+          "Next": "SourceMissing"
+        }
+      ],
+      "Next": "TransferSourceToBell"
+    },
+    "TransferSourceToBell": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/transfer",
+      "Parameters": {
+        "source_endpoint.$": "$.source.id",
+        "destination_endpoint.$": "$.bell.collection_id",
+        "label.=": "'Imaging ingest: ' + pi_directory",
+        "verify_checksum": true,
+        "sync_level": 3,
+        "DATA": [
+          {
+            "source_path.$": "$.source.path",
+            "destination_path.$": "$.bell.transfer_dataset_path",
+            "recursive": true
+          }
+        ]
+      },
+      "ResultPath": "$.results.source_transfer",
+      "WaitTime": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.source_transfer",
+          "Next": "SourceTransferFailed"
+        }
+      ],
+      "Next": "RunMetadataExtraction"
+    },
+    "RunMetadataExtraction": {
+      "Type": "Action",
+      "ActionUrl": "https://compute.actions.globus.org/v3",
+      "Parameters": {
+        "endpoint_id": "6f2a082f-5db5-401f-8c3d-65f6f5e8bba4",
+        "tasks": [
+          {
+            "function_id": "eb5aa53d-acdb-4b19-a597-9c612cd1cc3d",
+            "kwargs": {
+              "root.$": "$.bell.local_metadata_root",
+              "output_path.$": "$.bell.local_metadata_output_path",
+              "fortress_root.$": "$.metadata.fortress_root",
+              "timezone.$": "$.metadata.timezone",
+              "aliases_path.$": "$.metadata.aliases_path",
+              "path_layout.$": "$.metadata.path_layout",
+              "strict.$": "$.metadata.strict"
+            }
+          }
+        ]
+      },
+      "ResultPath": "$.results.metadata",
+      "WaitTime": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.metadata",
+          "Next": "MetadataExtractionFailed"
+        }
+      ],
+      "Next": "CreateTarball"
+    },
+    "CreateTarball": {
+      "Type": "Action",
+      "ActionUrl": "https://compute.actions.globus.org/v3",
+      "Parameters": {
+        "endpoint_id": "6f2a082f-5db5-401f-8c3d-65f6f5e8bba4",
+        "tasks": [
+          {
+            "function_id.$": "$.package.function_id",
+            "kwargs": {
+              "pi_folder_path.$": "$.bell.local_pi_folder_path",
+              "tarball_path.$": "$.bell.local_tarball_path",
+              "result_path.$": "$.bell.local_package_result_path",
+              "overwrite_policy.$": "$.overwrite_policy"
+            }
+          }
+        ]
+      },
+      "ResultPath": "$.results.package",
+      "WaitTime": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.package",
+          "Next": "PackagingFailed"
+        }
+      ],
+      "Next": "StatDepotTarball"
+    },
+    "StatDepotTarball": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/stat",
+      "Parameters": {
+        "endpoint_id.$": "$.depot.mapped_collection_id",
+        "path.$": "$.depot.tarball_path"
+      },
+      "ResultPath": "$.results.depot_stat",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.results.depot_stat_error",
+          "Next": "TransferPackageToDepot"
+        }
+      ],
+      "Next": "DepotTarballExistsChoice"
+    },
+    "DepotTarballExistsChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "reuse",
+          "Next": "GuestCollectionChoice"
+        },
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "replace",
+          "Next": "TransferPackageToDepot"
+        },
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "fail",
+          "Next": "DepotTarballAlreadyExists"
+        }
+      ],
+      "Default": "DepotTarballAlreadyExists"
+    },
+    "TransferPackageToDepot": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/transfer",
+      "Parameters": {
+        "source_endpoint.$": "$.bell.collection_id",
+        "destination_endpoint.$": "$.depot.mapped_collection_id",
+        "label.=": "'Imaging delivery: ' + pi_directory",
+        "verify_checksum": true,
+        "sync_level": 3,
+        "DATA": [
+          {
+            "source_path.$": "$.bell.transfer_tarball_path",
+            "destination_path.$": "$.depot.tarball_path"
+          },
+          {
+            "source_path.$": "$.bell.transfer_package_result_path",
+            "destination_path.$": "$.depot.package_result_path"
+          }
+        ]
+      },
+      "ResultPath": "$.results.depot_transfer",
+      "WaitTime": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.depot_transfer",
+          "Next": "DepotTransferFailed"
+        }
+      ],
+      "Next": "GuestCollectionChoice"
+    },
+    "GuestCollectionChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.sharing.create_guest_collection",
+          "BooleanEquals": true,
+          "Next": "CreateGuestCollection"
+        }
+      ],
+      "Default": "GrantExistingGuestPermission"
+    },
+    "CreateGuestCollection": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/gcsv5/create_guest_collection",
+      "Parameters": {
+        "mapped_collection_id.$": "$.depot.mapped_collection_id",
+        "collection_base_path.$": "$.depot.guest_collection_base_path",
+        "display_name.$": "$.sharing.guest_collection_display_name"
+      },
+      "ResultPath": "$.results.guest_collection",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.guest_collection",
+          "Next": "GuestCollectionCreationFailed"
+        }
+      ],
+      "Next": "GrantCreatedGuestPermission"
+    },
+    "GrantCreatedGuestPermission": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/manage_permission",
+      "Parameters": {
+        "operation": "CREATE",
+        "endpoint_id.$": "$.results.guest_collection.details.id",
+        "path": "/",
+        "principal_type": "identity",
+        "principal.$": "$.sharing.recipient_identity_id",
+        "permissions.$": "$.sharing.permissions",
+        "notify_email.$": "$.sharing.recipient_email",
+        "notify_message.=": "'Your imaging package for ' + pi_directory + ' is available.'"
+      },
+      "ResultPath": "$.results.permission",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.permission",
+          "Next": "PermissionFailed"
+        }
+      ],
+      "Next": "StatTapeTarball"
+    },
+    "GrantExistingGuestPermission": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/manage_permission",
+      "Parameters": {
+        "operation": "CREATE",
+        "endpoint_id.$": "$.sharing.existing_guest_collection_id",
+        "path": "/",
+        "principal_type": "identity",
+        "principal.$": "$.sharing.recipient_identity_id",
+        "permissions.$": "$.sharing.permissions",
+        "notify_email.$": "$.sharing.recipient_email",
+        "notify_message.=": "'Your imaging package for ' + pi_directory + ' is available.'"
+      },
+      "ResultPath": "$.results.permission",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.permission",
+          "Next": "PermissionFailed"
+        }
+      ],
+      "Next": "StatTapeTarball"
+    },
+    "StatTapeTarball": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/stat",
+      "Parameters": {
+        "endpoint_id.$": "$.tape.collection_id",
+        "path.$": "$.tape.tarball_path"
+      },
+      "ResultPath": "$.results.tape_stat",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.results.tape_stat_error",
+          "Next": "TransferPackageToTape"
+        }
+      ],
+      "Next": "TapeTarballExistsChoice"
+    },
+    "TapeTarballExistsChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "reuse",
+          "Next": "Success"
+        },
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "replace",
+          "Next": "TransferPackageToTape"
+        },
+        {
+          "Variable": "$.overwrite_policy",
+          "StringEquals": "fail",
+          "Next": "TapeTarballAlreadyExists"
+        }
+      ],
+      "Default": "TapeTarballAlreadyExists"
+    },
+    "TransferPackageToTape": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/transfer",
+      "Parameters": {
+        "source_endpoint.$": "$.bell.collection_id",
+        "destination_endpoint.$": "$.tape.collection_id",
+        "label.=": "'Imaging tape archive: ' + pi_directory",
+        "verify_checksum": true,
+        "sync_level": 3,
+        "DATA": [
+          {
+            "source_path.$": "$.bell.transfer_tarball_path",
+            "destination_path.$": "$.tape.tarball_path"
+          },
+          {
+            "source_path.$": "$.bell.transfer_package_result_path",
+            "destination_path.$": "$.tape.package_result_path"
+          }
+        ]
+      },
+      "ResultPath": "$.results.tape_transfer",
+      "WaitTime": 172800,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.errors.tape_transfer",
+          "Next": "TapeTransferFailed"
+        }
+      ],
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Pass",
+      "Result": {
+        "status": "SUCCEEDED",
+        "message": "Data delivered, shared, and archived."
+      },
+      "ResultPath": "$.workflow_result",
+      "End": true
+    },
+    "SourceMissing": {
+      "Type": "Fail",
+      "Error": "SourceMissing",
+      "Cause": "The source PI directory could not be statted."
+    },
+    "SourceTransferFailed": {
+      "Type": "Fail",
+      "Error": "SourceTransferFailed",
+      "Cause": "Transfer from the source GCP collection to Bell failed."
+    },
+    "MetadataExtractionFailed": {
+      "Type": "Fail",
+      "Error": "MetadataExtractionFailed",
+      "Cause": "The registered imaging metadata function failed."
+    },
+    "PackagingFailed": {
+      "Type": "Fail",
+      "Error": "PackagingFailed",
+      "Cause": "The Bell packaging function failed to create or validate the tarball."
+    },
+    "DepotTarballAlreadyExists": {
+      "Type": "Fail",
+      "Error": "DepotTarballAlreadyExists",
+      "Cause": "A Data Depot tarball already exists and overwrite_policy is fail."
+    },
+    "DepotTransferFailed": {
+      "Type": "Fail",
+      "Error": "DepotTransferFailed",
+      "Cause": "Transfer of the package from Bell to Data Depot failed."
+    },
+    "GuestCollectionCreationFailed": {
+      "Type": "Fail",
+      "Error": "GuestCollectionCreationFailed",
+      "Cause": "Creation of the Data Depot guest collection failed."
+    },
+    "PermissionFailed": {
+      "Type": "Fail",
+      "Error": "PermissionFailed",
+      "Cause": "Granting the recipient access to the guest collection failed."
+    },
+    "TapeTarballAlreadyExists": {
+      "Type": "Fail",
+      "Error": "TapeTarballAlreadyExists",
+      "Cause": "A tape archive tarball already exists and overwrite_policy is fail."
+    },
+    "TapeTransferFailed": {
+      "Type": "Fail",
+      "Error": "TapeTransferFailed",
+      "Cause": "Transfer of the package from Bell to tape failed; Data Depot delivery may already be complete."
+    }
+  }
+}

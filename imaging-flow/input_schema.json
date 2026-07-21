@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Imaging ingest, metadata, delivery, sharing, and archive",
+  "type": "object",
+  "required": [
+    "pi_directory",
+    "source",
+    "bell",
+    "metadata",
+    "package",
+    "depot",
+    "sharing",
+    "tape",
+    "overwrite_policy"
+  ],
+  "propertyOrder": [
+    "pi_directory",
+    "source",
+    "bell",
+    "metadata",
+    "package",
+    "depot",
+    "sharing",
+    "tape",
+    "overwrite_policy"
+  ],
+  "properties": {
+    "pi_directory": {
+      "type": "string",
+      "title": "PI directory key",
+      "description": "Controlled directory key, for example Zhu_Shawn_410.",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{1,127}$"
+    },
+    "source": {
+      "type": "object",
+      "title": "Source GCP collection and PI path",
+      "format": "globus-collection",
+      "required": [
+        "id",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "bell": {
+      "type": "object",
+      "title": "Bell staging configuration",
+      "required": [
+        "collection_id",
+        "transfer_dataset_path",
+        "local_metadata_root",
+        "local_metadata_output_path",
+        "local_pi_folder_path",
+        "local_tarball_path",
+        "local_package_result_path",
+        "transfer_tarball_path",
+        "transfer_package_result_path"
+      ],
+      "properties": {
+        "collection_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "transfer_dataset_path": {
+          "type": "string"
+        },
+        "local_metadata_root": {
+          "type": "string"
+        },
+        "local_metadata_output_path": {
+          "type": "string"
+        },
+        "local_pi_folder_path": {
+          "type": "string"
+        },
+        "local_tarball_path": {
+          "type": "string"
+        },
+        "local_package_result_path": {
+          "type": "string"
+        },
+        "transfer_tarball_path": {
+          "type": "string"
+        },
+        "transfer_package_result_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata extraction options",
+      "required": [
+        "fortress_root",
+        "timezone",
+        "aliases_path",
+        "path_layout",
+        "strict"
+      ],
+      "properties": {
+        "fortress_root": {
+          "type": "string",
+          "default": "/"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "America/Indiana/Indianapolis"
+        },
+        "aliases_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "path_layout": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pi-student",
+            "pi-only"
+          ],
+          "default": "auto"
+        },
+        "strict": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "package": {
+      "type": "object",
+      "title": "Packaging Compute function",
+      "required": [
+        "function_id"
+      ],
+      "properties": {
+        "function_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false
+    },
+    "depot": {
+      "type": "object",
+      "title": "Data Depot destination",
+      "required": [
+        "mapped_collection_id",
+        "tarball_path",
+        "package_result_path",
+        "guest_collection_base_path"
+      ],
+      "properties": {
+        "mapped_collection_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tarball_path": {
+          "type": "string"
+        },
+        "package_result_path": {
+          "type": "string"
+        },
+        "guest_collection_base_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sharing": {
+      "type": "object",
+      "title": "Guest collection sharing",
+      "required": [
+        "create_guest_collection",
+        "existing_guest_collection_id",
+        "guest_collection_display_name",
+        "recipient_identity_id",
+        "recipient_email",
+        "permissions"
+      ],
+      "properties": {
+        "create_guest_collection": {
+          "type": "boolean",
+          "default": true
+        },
+        "existing_guest_collection_id": {
+          "type": "string",
+          "default": ""
+        },
+        "guest_collection_display_name": {
+          "type": "string"
+        },
+        "recipient_identity_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recipient_email": {
+          "type": "string",
+          "format": "email"
+        },
+        "permissions": {
+          "type": "string",
+          "enum": [
+            "r",
+            "rw"
+          ],
+          "default": "r"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tape": {
+      "type": "object",
+      "title": "Tape archive destination",
+      "required": [
+        "collection_id",
+        "tarball_path",
+        "package_result_path"
+      ],
+      "properties": {
+        "collection_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tarball_path": {
+          "type": "string"
+        },
+        "package_result_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "overwrite_policy": {
+      "type": "string",
+      "title": "Existing tarball policy",
+      "enum": [
+        "fail",
+        "reuse",
+        "replace"
+      ],
+      "default": "fail"
+    }
+  },
+  "additionalProperties": false
+}
