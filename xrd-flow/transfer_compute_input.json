@@ -1,0 +1,17 @@
+{
+  "input": {
+    "source": {
+      "collection_id": "b54f74e7-06b2-4b0c-b339-00b16057f1a5",
+      "path": "/home/rwilfong/xrd-scans/xrd_scan_001.csv"
+    },
+    "destination": {
+      "collection_id": "894d0ff8-0fb6-11eb-81b1-0e2f230cc907",
+      "input_transfer_path": "/home/rwilfong/globus-flows/xrd-ex/work/xrd_scan_001.csv",
+      "input_filesystem_path": "/home/rwilfong/globus-flows/xrd-ex/work/xrd_scan_001.csv",
+      "output_transfer_path": "/home/rwilfong/globus-flows/xrd-ex/work/xrd_scan_001_results.json",
+      "output_filesystem_path": "/home/rwilfong/globus-flows/xrd-ex/work/xrd_scan_001_results.json"
+    },
+    "compute_endpoint_id": "6f2a082f-5db5-401f-8c3d-65f6f5e8bba4",
+    "function_id": "9bb612a8-d807-471b-8e1f-c008970aa7f3"
+  }
+}

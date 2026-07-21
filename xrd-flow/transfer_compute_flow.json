@@ -1,0 +1,42 @@
+{
+  "Comment": "Transfer an XRD scan, analyze it, and write a JSON result",
+  "StartAt": "StageInputFile",
+  "States": {
+    "StageInputFile": {
+      "Type": "Action",
+      "ActionUrl": "https://transfer.actions.globus.org/transfer",
+      "WaitTime": 900,
+      "Parameters": {
+        "source_endpoint.$": "$.input.source.collection_id",
+        "destination_endpoint.$": "$.input.destination.collection_id",
+        "DATA": [
+          {
+            "source_path.$": "$.input.source.path",
+            "destination_path.$": "$.input.destination.input_transfer_path"
+          }
+        ]
+      },
+      "ResultPath": "$.stage_result",
+      "Next": "AnalyzeXRDScan"
+    },
+    "AnalyzeXRDScan": {
+      "Type": "Action",
+      "ActionUrl": "https://compute.actions.globus.org/v3",
+      "Parameters": {
+        "endpoint_id.$": "$.input.compute_endpoint_id",
+        "tasks": [
+          {
+            "function_id.$": "$.input.function_id",
+            "args": [],
+            "kwargs": {
+              "file_path.$": "$.input.destination.input_filesystem_path",
+              "output_path.$": "$.input.destination.output_filesystem_path"
+            }
+          }
+        ]
+      },
+      "ResultPath": "$.compute_result",
+      "End": true
+    }
+  }
+}

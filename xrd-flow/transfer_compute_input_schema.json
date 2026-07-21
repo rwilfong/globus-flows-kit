@@ -1,0 +1,75 @@
+{
+  "type": "object",
+  "required": [
+    "input"
+  ],
+  "properties": {
+    "input": {
+      "type": "object",
+      "required": [
+        "source",
+        "destination",
+        "compute_endpoint_id",
+        "function_id"
+      ],
+      "properties": {
+        "source": {
+          "type": "object",
+          "required": [
+            "collection_id",
+            "path"
+          ],
+          "properties": {
+            "collection_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "destination": {
+          "type": "object",
+          "required": [
+            "collection_id",
+            "input_transfer_path",
+            "input_filesystem_path",
+            "output_transfer_path",
+            "output_filesystem_path"
+          ],
+          "properties": {
+            "collection_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "input_transfer_path": {
+              "type": "string"
+            },
+            "input_filesystem_path": {
+              "type": "string"
+            },
+            "output_transfer_path": {
+              "type": "string"
+            },
+            "output_filesystem_path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "compute_endpoint_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "function_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
